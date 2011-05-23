@@ -7,7 +7,8 @@ Inspired by osws and woof, `wos` is meant to solve the problem of
 much infrastructure. `wos` adheres to the following principles:
 
 * Actually serve the file. `wos` will stay active as long as it can
-  until it transmits the file in question or is killed.
+  until it transmits the file in question or is killed. This means `wos`
+  stays active through failed authentications, bad requests, etc.
 * Be dumb. `wos` doesn't care about buffering, or Digest authentication,
   or anything fancy - it serves a file as quickly and straightforwardly
   as possible.
