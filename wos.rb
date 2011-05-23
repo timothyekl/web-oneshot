@@ -75,7 +75,7 @@ log_verbose("Read #{contents.length} bytes")
 
 # Open Web server
 serv = TCPServer.new(@options[:port])
-log_verbose("Listening on port #{@options[:port]}")
+puts "Listening on port #{@options[:port]}"
 while s = serv.accept
   # Read HTTP request
   req = []
