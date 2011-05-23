@@ -58,4 +58,24 @@ log_verbose("Opened file #{file}")
 log_verbose("Read #{contents.length} bytes")
 
 # Open Web server
+serv = TCPServer.new(@options[:port])
+log_verbose("Listening on port #{@options[:port]}")
+while s = serv.accept
+  req = s.gets
+  log_verbose("#{s.peeraddr[2]}: #{req}")
+  served = false
+  
+  # Parse file from request; redirect if necessary
+  req_file = req.split(" ")[1][1..-1]
+  if req_file == File.basename(file)
+    s.print "HTTP/1.1 200/OK\r\n\r\n" + contents
+    s.close
+    served = true
+  else
+    s.print "HTTP/1.1 301/Moved Permanently\r\nLocation: #{File.basename(file)}\r\n\r\n"
+  end
 
+  if served
+    break
+  end
+end
