@@ -4,9 +4,11 @@ require 'base64'
 require 'optparse'
 require 'pp'
 require 'socket'
+require 'helper_methods'
 
 @options = {}
 DEFAULT_PORT = 8080
+include Helpers
 
 # Parse arguments
 OptionParser.new do |opts|
@@ -35,28 +37,6 @@ OptionParser.new do |opts|
     @options[:pass] = p
   end
 end.parse!
-
-# Define loggers
-def log_verbose(s)
-  if @options[:verbose] == true
-    puts s
-  end
-end
-
-# Define authentication helper(s)
-def accept_auth(user, pass)
-  if @options[:user] == nil && @options[:pass] == nil
-    return true
-  elsif @options[:user] == user && @options[:pass] == nil
-    return true
-  elsif @options[:user] == nil && @options[:pass] == pass
-    return true
-  elsif @options[:user] == user && @options[:pass] == pass
-    return true
-  else
-    return false
-  end
-end
 
 # Require a file to serve
 if ARGV.length != 1 && !(ARGV.length == 0 && @options[:serve_self] == true)
