@@ -119,4 +119,6 @@ class WOS
 
 end
 
-wos = WOS.new(@options).serve!
+if __FILE__ == $0
+  wos = WOS.new(@options).serve!
+end
