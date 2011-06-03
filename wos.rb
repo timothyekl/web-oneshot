@@ -4,10 +4,24 @@ require 'base64'
 require 'optparse'
 require 'pp'
 require 'socket'
-require 'helper_methods'
 
 @options = {}
 DEFAULT_PORT = 8080
+
+module Helpers
+  # Define loggers
+  def log_verbose(s)
+    if @options[:verbose] == true
+      puts s
+    end
+  end
+
+  # Define authentication helper(s)
+  def accept_auth(user, pass)
+    [@options[:user], @options[:pass]] == [user, pass]
+  end
+end
+
 include Helpers
 
 # Parse arguments
@@ -43,55 +57,66 @@ if ARGV.length != 1 && !(ARGV.length == 0 && @options[:serve_self] == true)
   $stderr.puts "No file specified and --serve-self option not passed; aborting"
 end
 if @options[:serve_self] == true
-  file = "wos.rb"
+  @options[:file_path] = "wos.rb"
 else
-  file = ARGV[0]
+  @options[:file_path] = ARGV[0]
 end
 
-# Read file into memory
-contents = open(file, "rb") { |f| f.read }
-log_verbose("Opened file #{file}")
-log_verbose("Read #{contents.length} bytes")
+class WOS
+  def initialize(opts)
+    @options = opts
+  end
 
-# Open Web server
-serv = TCPServer.new(@options[:port])
-puts "Listening on port #{@options[:port]}"
-while s = serv.accept
-  # Read HTTP request
-  req = []
-  while l = s.gets
-    req.push l
-    if l == "\r\n"
-      break
+  def serve!
+    # Read file into memory
+    contents = open(@options[:file_path], "rb") { |f| f.read }
+    log_verbose("Opened file #{@options[:file_path]}")
+    log_verbose("Read #{contents.length} bytes")
+    
+    # Open Web server
+    serv = TCPServer.new(@options[:port])
+    puts "Listening on port #{@options[:port]}"
+    while s = serv.accept
+      # Read HTTP request
+      req = []
+      while l = s.gets
+        req.push l
+        if l == "\r\n"
+          break
+        end
+      end
+      log_verbose("#{s.peeraddr[2]}: #{req[0]}")
+      served = false
+    
+      # Fetch username/pass out of request
+      user = nil
+      pass = nil
+      req.each do |r|
+        if r[/^Authorization: Basic /] == "Authorization: Basic "
+          auth_b64 = /^Authorization: Basic (.*)$/.match(r)[1]
+          auth = Base64.decode64(auth_b64)
+          user = auth.split(":")[0]
+          pass = auth.split(":")[1]
+          log_verbose("Credentials: #{user} : #{pass}")
+        end
+      end
+      
+      # Parse file from request; redirect if necessary
+      req_file = req[0].split(" ")[1][1..-1]
+      if accept_auth(user, pass)
+        if req_file == File.basename(@options[:file_path])
+          s.print "HTTP/1.1 200/OK\r\n\r\n" + contents
+          s.close
+          break
+        else
+          s.print "HTTP/1.1 301/Moved Permanently\r\nLocation: #{File.basename(@options[:file_path])}\r\n\r\n"
+        end
+      else
+        s.print "HTTP/1.1 401/Unauthorized\r\nWWW-Authenticate: basic\r\n\r\n"
+      end
     end
   end
-  log_verbose("#{s.peeraddr[2]}: #{req[0]}")
-  served = false
 
-  # Fetch username/pass out of request
-  user = nil
-  pass = nil
-  req.each do |r|
-    if r[/^Authorization: Basic /] == "Authorization: Basic "
-      auth_b64 = /^Authorization: Basic (.*)$/.match(r)[1]
-      auth = Base64.decode64(auth_b64)
-      user = auth.split(":")[0]
-      pass = auth.split(":")[1]
-      log_verbose("Credentials: #{user} : #{pass}")
-    end
-  end
-  
-  # Parse file from request; redirect if necessary
-  req_file = req[0].split(" ")[1][1..-1]
-  if accept_auth(user, pass)
-    if req_file == File.basename(file)
-      s.print "HTTP/1.1 200/OK\r\n\r\n" + contents
-      s.close
-      break
-    else
-      s.print "HTTP/1.1 301/Moved Permanently\r\nLocation: #{File.basename(file)}\r\n\r\n"
-    end
-  else
-    s.print "HTTP/1.1 401/Unauthorized\r\nWWW-Authenticate: basic\r\n\r\n"
-  end
 end
+
+wos = WOS.new(@options).serve!
