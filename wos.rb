@@ -38,7 +38,7 @@ OptionParser.new do |opts|
 
   @options[:port] = DEFAULT_PORT
   opts.on("-p", "--port [PORT]", "Use a specific port") do |p|
-    if p.to_i.to_s == p && p.to_i < 65536 && p.to_i > 0:
+    if p.to_i.to_s == p && p.to_i < 65536 && p.to_i > 0
       @options[:port] = p.to_i
     end
   end
@@ -55,6 +55,7 @@ end.parse!
 # Require a file to serve
 if ARGV.length != 1 && !(ARGV.length == 0 && @options[:serve_self] == true)
   $stderr.puts "No file specified and --serve-self option not passed; aborting"
+  Kernel.exit
 end
 if @options[:serve_self] == true
   @options[:file_path] = "wos.rb"
@@ -105,7 +106,9 @@ class WOS
       req_file = req[0].split(" ")[1][1..-1]
       if accept_auth(user, pass)
         if req_file == File.basename(@options[:file_path])
-          s.print "HTTP/1.1 200/OK\r\n\r\n" + contents
+          s.print "HTTP/1.1 200/OK\r\n"
+          s.print "Content-Length: #{contents.length}\r\n"
+          s.print "\r\n" + contents
           s.close
           break
         else
@@ -116,7 +119,6 @@ class WOS
       end
     end
   end
-
 end
 
 if __FILE__ == $0
