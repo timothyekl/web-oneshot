@@ -7,6 +7,7 @@ require 'socket'
 
 @options = {}
 DEFAULT_PORT = 8080
+CHUNK_SIZE = 4096
 
 module Helpers
   # Define loggers
@@ -69,10 +70,7 @@ class WOS
   end
 
   def serve!
-    # Read file into memory
-    contents = open(@options[:file_path], "rb") { |f| f.read }
-    log_verbose("Opened file #{@options[:file_path]}")
-    log_verbose("Read #{contents.length} bytes")
+    log_verbose("Serving file #{File.size(@options[:file_path])} bytes large")
     
     # Open Web server
     serv = TCPServer.new(@options[:port])
@@ -106,9 +104,18 @@ class WOS
       req_file = req[0].split(" ")[1][1..-1]
       if accept_auth(user, pass)
         if req_file == File.basename(@options[:file_path])
-          s.print "HTTP/1.1 200/OK\r\n"
-          s.print "Content-Length: #{contents.length}\r\n"
-          s.print "\r\n" + contents
+          if !File.exist?(@options[:file_path])
+            s.print "HTTP/1.1 404/Not Found"
+          else
+            s.print "HTTP/1.1 200/OK\r\n"
+            s.print "Content-Length: #{File.size(@options[:file_path])}\r\n"
+            s.print "\r\n"
+            File.open(@options[:file_path]) do |f|
+              while chunk = f.read(CHUNK_SIZE)
+                s.print chunk
+              end
+            end
+          end
           s.close
           break
         else
