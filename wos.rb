@@ -17,6 +17,10 @@ module Helpers
     end
   end
 
+  def result(status, sock)
+    puts "#{Time.now.to_i}: #{sock.peeraddr(true)[2]} (#{sock.peeraddr[3]}) ==> #{status}"
+  end
+
   # Define authentication helper(s)
   def accept_auth(user, pass)
     [@options[:user], @options[:pass]] == [user, pass]
@@ -105,8 +109,10 @@ class WOS
       if accept_auth(user, pass)
         if req_file == File.basename(@options[:file_path])
           if !File.exist?(@options[:file_path])
+            result(404, s)
             s.print "HTTP/1.1 404/Not Found"
           else
+            result(200, s)
             s.print "HTTP/1.1 200/OK\r\n"
             s.print "Content-Length: #{File.size(@options[:file_path])}\r\n"
             s.print "\r\n"
@@ -119,9 +125,11 @@ class WOS
           s.close
           break
         else
+          result(301, s)
           s.print "HTTP/1.1 301/Moved Permanently\r\nLocation: #{File.basename(@options[:file_path])}\r\n\r\n"
         end
       else
+        result(401, s)
         s.print "HTTP/1.1 401/Unauthorized\r\nWWW-Authenticate: basic\r\n\r\n"
       end
     end
