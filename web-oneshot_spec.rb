@@ -1,5 +1,5 @@
 require 'rspec'
-require 'wos.rb'
+require './wos.rb'
 
 include Helpers
 
