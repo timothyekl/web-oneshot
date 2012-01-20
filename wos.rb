@@ -4,6 +4,7 @@ require 'base64'
 require 'optparse'
 require 'pp'
 require 'socket'
+PBAR_AVAILABLE = require 'progressbar'
 
 @options = {}
 DEFAULT_PORT = 8080
@@ -116,11 +117,14 @@ class WOS
             s.print "HTTP/1.1 200/OK\r\n"
             s.print "Content-Length: #{File.size(@options[:file_path])}\r\n"
             s.print "\r\n"
+            pbar = ProgressBar.new("sending", (File.size(@options[:file_path]).to_f / CHUNK_SIZE).ceil) if PBAR_AVAILABLE
             File.open(@options[:file_path]) do |f|
               while chunk = f.read(CHUNK_SIZE)
                 s.print chunk
+                pbar.inc if PBAR_AVAILABLE
               end
             end
+            pbar.finish if PBAR_AVAILABLE
           end
           s.close
           break
